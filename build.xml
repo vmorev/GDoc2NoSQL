@@ -11,8 +11,24 @@
         <path location="${lib.gdata.dir}/gdata-docs-3.0.jar"/>
         <path location="${lib.gdata.dir}/gdata-media-1.0.jar"/>
         <path location="${lib.gdata.dir}/guava-10.0.1.jar"/>
+        <path location="${lib.log.dir}"/>
+        <path location="${lib.log.dir}/log4j-1.2.16.jar"/>
+        <path location="${lib.log.dir}/slf4j-log4j12-1.6.4.jar"/>
         <path location="${lib.ts.dir}/terrastore-javaclient-2.4.1.jar"/>
         <path location="${lib.ts.dir}/commons-lang-2.4.jar"/>
+        <path location="${lib.ts.dir}/activation-1.1.jar"/>
+        <path location="${lib.ts.dir}/commons-codec-1.2.jar"/>
+        <path location="${lib.ts.dir}/commons-httpclient-3.1.jar"/>
+        <path location="${lib.ts.dir}/commons-logging-1.0.4.jar"/>
+        <path location="${lib.ts.dir}/jackson-core-asl-1.7.2.jar"/>
+        <path location="${lib.ts.dir}/jackson-mapper-asl-1.7.2.jar"/>
+        <path location="${lib.ts.dir}/javassist-3.6.0.GA.jar"/>
+        <path location="${lib.ts.dir}/jaxrs-api-2.1.0.GA.jar"/>
+        <path location="${lib.ts.dir}/jcip-annotations-1.0.jar"/>
+        <path location="${lib.ts.dir}/jsr250-api-1.0.jar"/>
+        <path location="${lib.ts.dir}/resteasy-jaxrs-2.1.0.GA.jar"/>
+        <path location="${lib.ts.dir}/scannotation-1.0.2.jar"/>
+        <path location="${lib.ts.dir}/slf4j-api-1.6.1.jar"/>
     </path>
 
     <target name="clean" description="Delete old build">
