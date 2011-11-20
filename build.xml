@@ -11,7 +11,6 @@
         <path location="${lib.gdata.dir}/gdata-docs-3.0.jar"/>
         <path location="${lib.gdata.dir}/gdata-media-1.0.jar"/>
         <path location="${lib.gdata.dir}/guava-10.0.1.jar"/>
-        <path location="${lib.log.dir}"/>
         <path location="${lib.log.dir}/log4j-1.2.16.jar"/>
         <path location="${lib.log.dir}/slf4j-log4j12-1.6.4.jar"/>
         <path location="${lib.ts.dir}/terrastore-javaclient-2.4.1.jar"/>
@@ -50,6 +49,9 @@
                 <attribute name="Main-Class" value="${classes.main}"/>
             </manifest>
         </jar>
+        <copy todir="${target.dir}">
+            <fileset dir="${src.dir}" includes="*.properties"/>
+        </copy> 
     </target>
 
     <target name="run" depends="build">
@@ -57,6 +59,7 @@
             <classpath>
                 <path refid="classpath"/>
                 <path location="${target.dir}/${jar.name}"/>
+                <path location="${target.dir}"/>
             </classpath>
         </java>
     </target>

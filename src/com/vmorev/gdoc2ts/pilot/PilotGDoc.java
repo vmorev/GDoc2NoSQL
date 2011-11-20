@@ -5,6 +5,8 @@ import com.vmorev.gdoc2ts.DocumentLoader;
 import com.vmorev.gdoc2ts.connector.GDocConnector;
 import com.vmorev.gdoc2ts.connector.TSConnector;
 import com.vmorev.gdoc2ts.model.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -17,6 +19,7 @@ import java.util.Properties;
  */
 public class PilotGDoc {
     private static Properties prop = null;
+    private final static Logger logger = LoggerFactory.getLogger(PilotGDoc.class);
 
     public static void main(String[] args) throws IOException, ServiceException {
         GDocConnector gDocConnector = new GDocConnector(
@@ -30,7 +33,7 @@ public class PilotGDoc {
 
         Map<String, Document> docs = tsConnector.getDocuments(rootFolderId).values().get(Document.class);
         for (Document doc : docs.values()) {
-            System.out.println("Reading " + doc.getTitle());
+            logger.info("Test reading of document " + doc.getTitle());
         }
     }
 

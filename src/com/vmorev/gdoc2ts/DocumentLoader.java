@@ -28,21 +28,39 @@ public class DocumentLoader {
         this.gDocConnector = gDocConnector;
     }
 
-    public void syncFolder(String folderId) throws IOException, ServiceException {
-        List<AbstractDocument> gDocs = gDocConnector.getDocumentsByFolder(folderId);
-        BucketOperation tsDocs = tsConnector.getDocuments(folderId);
+    public void syncFolder(String resourceId) throws IOException, ServiceException {
+        List<AbstractDocument> gDocs;
+        if (resourceId.startsWith(AbstractDocument.DOC_TYPE_FOLDER)) {
+            gDocs = gDocConnector.getDocumentsByFolder(resourceId);
+        } else if (resourceId.startsWith(AbstractDocument.DOC_TYPE_SPREADSHEETS)) {
+            gDocs = gDocConnector.getDocumentsBySpreadsheet(resourceId);
+        } else {
+            return;
+        }
 
+        BucketOperation tsDocs = tsConnector.getDocuments(resourceId);
         Map<String, AbstractDocument> toLoad = new HashMap<String, AbstractDocument>(gDocs.size());
 
         for (AbstractDocument entry : gDocs) {
-            logger.info("GDoc entry found with ID: " + entry.getResourceId() + " and title: " + entry.getTitle());
+            if (logger.isDebugEnabled())
+                logger.debug("GDoc entry found with ID: " + entry.getResourceId() + " and title: " + entry.getTitle());
             if (AbstractDocument.DOC_TYPE_FOLDER.equals(entry.getType())) {
                 syncFolder(entry.getResourceId());
             } else if (AbstractDocument.DOC_TYPE_DOCUMENT.equals(entry.getType())) {
                 toLoad.put(entry.getResourceId(), entry);
+            } else if (AbstractDocument.DOC_TYPE_SPREADSHEETS.equals(entry.getType())) {
+                syncFolder(entry.getResourceId());
+            } else if (AbstractDocument.DOC_TYPE_SPREADSHEET_ROW.equals(entry.getType())) {
+                toLoad.put(entry.getResourceId(), entry);
             }
         }
 
+        if (logger.isDebugEnabled())
+            logger.debug("Syncing folder " + resourceId);
+        for (String key : toLoad.keySet()) {
+            if (logger.isDebugEnabled())
+                logger.debug("Syncing key " + key);
+        }
         if (toLoad.size() > 0)
             tsDocs.bulk().put(new Values<AbstractDocument>(toLoad));
 

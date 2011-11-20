@@ -1,18 +1,20 @@
 package com.vmorev.gdoc2ts.connector;
 
-import com.google.gdata.client.docs.DocsService;
 import com.google.gdata.data.MediaContent;
 import com.google.gdata.data.docs.DocumentListEntry;
 import com.google.gdata.data.docs.DocumentListFeed;
 import com.google.gdata.data.media.MediaSource;
+import com.google.gdata.data.spreadsheet.ListEntry;
+import com.google.gdata.data.spreadsheet.ListFeed;
+import com.google.gdata.data.spreadsheet.SpreadsheetEntry;
+import com.google.gdata.data.spreadsheet.WorksheetEntry;
 import com.google.gdata.util.AuthenticationException;
 import com.google.gdata.util.ServiceException;
-import com.vmorev.gdoc2ts.model.AbstractDocument;
-import com.vmorev.gdoc2ts.model.Document;
-import com.vmorev.gdoc2ts.model.Folder;
-import com.vmorev.gdoc2ts.model.UnknownDocument;
+import com.vmorev.gdoc2ts.model.*;
 import com.vmorev.gdoc2ts.utils.URLBuilder;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -28,48 +30,76 @@ import java.util.List;
  * Date: 11/13/11 2:17 PM
  */
 public class GDocConnector {
-    private DocsService service;
+    private final Logger logger = LoggerFactory.getLogger(GDocConnector.class);
 
-    private static final String APP_NAME = "GDoc2Terrastore";
+    private GDocConnection conn;
 
     public GDocConnector(String user, String password) throws AuthenticationException {
-        service = new DocsService(APP_NAME);
-        service.setUserCredentials(user, password);
+        conn = new GDocConnection(user, password);
     }
 
     public List<AbstractDocument> getDocumentsByFolder(String resourceId) throws IOException, ServiceException {
-        URL url = URLBuilder.buildFolderURL(resourceId);
-        DocumentListFeed feed = service.getFeed(url, DocumentListFeed.class);
+        URL url = URLBuilder.buildDocumentListFeedURL(resourceId);
+        DocumentListFeed feed = conn.getService().getFeed(url, DocumentListFeed.class);
 
         List<AbstractDocument> docs = new ArrayList<AbstractDocument>(feed.getEntries().size());
         for (DocumentListEntry entry : feed.getEntries()) {
-            AbstractDocument doc = convert(entry, true);
-            docs.add(doc);
+            if (logger.isDebugEnabled())
+                logger.debug("Adding folder entry " + entry.getResourceId() + " with title " + entry.getTitle().getPlainText());
+
+            docs.add(convert(entry));
         }
         return docs;
     }
 
-    private AbstractDocument convert(DocumentListEntry entry, boolean loadContent) throws IOException, ServiceException {
+    public List<AbstractDocument> getDocumentsBySpreadsheet(String resourceId) throws IOException, ServiceException {
+        List<AbstractDocument> docs = new ArrayList<AbstractDocument>();
+        URL url = URLBuilder.buildSpreadsheetEntryURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
+        SpreadsheetEntry ssEntry = conn.getSsService().getEntry(url, SpreadsheetEntry.class);
+        if (logger.isDebugEnabled())
+            logger.debug("Adding spreadsheet entry " + resourceId + " with title " + ssEntry.getTitle().getPlainText());
+
+        for (WorksheetEntry weEntry : ssEntry.getWorksheets()) {
+            if (logger.isDebugEnabled())
+                logger.debug("Adding worksheet entry " + weEntry.getId().substring(weEntry.getId().lastIndexOf('/') + 1) + " with title " + weEntry.getTitle().getPlainText());
+
+            ListFeed lFeed = conn.getSsService().getFeed(weEntry.getListFeedUrl(), ListFeed.class);
+            for (ListEntry leEntry : lFeed.getEntries()) {
+                if (logger.isDebugEnabled())
+                    logger.debug("Adding list entry " + leEntry.getId().substring(leEntry.getId().lastIndexOf('/') + 1) + " with title " + leEntry.getTitle().getPlainText());
+
+                AbstractDocument doc = new SpreadsheetRow();
+                String entryResourceId = resourceId + ":" +
+                        weEntry.getId().substring(weEntry.getId().lastIndexOf('/') + 1) + ":" +
+                        leEntry.getId().substring(leEntry.getId().lastIndexOf('/') + 1);
+                doc.setResourceId(entryResourceId);
+                doc.setTitle(leEntry.getTitle().getPlainText());
+                doc.setUpdateDate(new Date(leEntry.getUpdated().getValue()));
+
+                for (String tag : leEntry.getCustomElements().getTags()) {
+                    if (logger.isDebugEnabled())
+                        logger.debug("Tag " + tag + " = " + leEntry.getCustomElements().getValue(tag));
+
+                    ((SpreadsheetRow) doc).addTag(tag, leEntry.getCustomElements().getValue(tag));
+                }
+                docs.add(doc);
+            }
+        }
+        return docs;
+    }
+
+    private AbstractDocument convert(DocumentListEntry entry) throws IOException, ServiceException {
         AbstractDocument doc;
 
         if (AbstractDocument.DOC_TYPE_FOLDER.equals(entry.getType())) {
             doc = new Folder();
         } else if (AbstractDocument.DOC_TYPE_DOCUMENT.equals(entry.getType())) {
             doc = new Document();
-            if (loadContent) {
-                String encoded = downloadDocument(entry.getResourceId());
-                ((Document) doc).setXml(StringEscapeUtils.unescapeHtml(encoded));
-            }
-            /*
+            doc.setRawContent(downloadDocument(entry.getResourceId()));
         } else if (AbstractDocument.DOC_TYPE_SPREADSHEETS.equals(entry.getType())) {
-            //todo exclude from folder
-            //todo add new folder for excel
-            doc = new ();
-            if (loadContent) {
-                String encoded = downloadSpreadsheets(entry.getResourceId());
-                (() doc).setXml(StringEscapeUtils.unescapeHtml(encoded));
-            }
-            */
+            doc = new Spreadsheet();
+            // do not need to get raw context here, will receive it later
+            // doc.setRawContent(downloadSpreadsheets(entry.getResourceId()));
         } else {
             doc = new UnknownDocument();
         }
@@ -82,18 +112,18 @@ public class GDocConnector {
 
     private String downloadSpreadsheets(String resourceId) throws IOException, ServiceException {
         URL url = URLBuilder.buildSpreadsheetDownloadURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
-        return downloadFile(url);
+        return StringEscapeUtils.unescapeHtml(downloadFile(url));
     }
 
     private String downloadDocument(String resourceId) throws IOException, ServiceException {
         URL url = URLBuilder.buildDocumentDownloadURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
-        return downloadFile(url);
+        return StringEscapeUtils.unescapeHtml(downloadFile(url));
     }
 
     private String downloadFile(URL exportUrl) throws IOException, ServiceException {
         MediaContent mc = new MediaContent();
         mc.setUri(exportUrl.toString());
-        MediaSource ms = service.getMedia(mc);
+        MediaSource ms = conn.getService().getMedia(mc);
 
         InputStream inStream = null;
         OutputStream outStream = null;
