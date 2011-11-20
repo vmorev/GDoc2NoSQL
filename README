@@ -1,0 +1,14 @@
+------------------------------------------------------------------------------------------------
+Tool overview
+------------------------------------------------------------------------------------------------
+
+This tool can sync all documents from any Google Docs folder into Terrastore noSQL database. 
+
+The goal is to use Google Docs as an site admin tool including reach text Google Docs editor and Google Spreadsheets for propreties data. We can't use Google service directly from site code because of performance so caching data on Terrastore noSQL engine. Site will use Terrastore to get the data. Same time all administration tasks will be perfored via Google Docs interface.
+
+
+------------------------------------------------------------------------------------------------
+Known issues and limitations
+------------------------------------------------------------------------------------------------
+
+Current version support only Document files.

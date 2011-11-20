@@ -1,0 +1,48 @@
+<project name="GDoc2NoSQL" default="run" basedir=".">
+    <property file="build.properties"/>
+
+    <path id="classpath">
+        <path location="${lib.j2ee.dir}/activation.jar"/>
+        <path location="${lib.j2ee.dir}/mail.jar"/>
+        <path location="${lib.j2ee.dir}/servlet-api-2.4.jar"/>
+        <path location="${lib.gdata.dir}/gdata-base-1.0.jar"/>
+        <path location="${lib.gdata.dir}/gdata-client-1.0.jar"/>
+        <path location="${lib.gdata.dir}/gdata-core-1.0.jar"/>
+        <path location="${lib.gdata.dir}/gdata-docs-3.0.jar"/>
+        <path location="${lib.gdata.dir}/gdata-media-1.0.jar"/>
+        <path location="${lib.gdata.dir}/guava-10.0.1.jar"/>
+        <path location="${lib.ts.dir}/terrastore-javaclient-2.4.1.jar"/>
+        <path location="${lib.ts.dir}/commons-lang-2.4.jar"/>
+    </path>
+
+    <target name="clean" description="Delete old build">
+        <delete dir="${target.dir}"/>
+    </target>
+
+    <target name="build" depends="clean">
+        <mkdir dir="${target.dir}"/>
+        <mkdir dir="${classes.dir}"/>
+        <javac srcdir="${src.dir}"
+               destdir="${classes.dir}"
+               deprecation="false"
+               optimize="true">
+            <classpath refid="classpath"/>
+        </javac>
+        <jar jarfile="${target.dir}/${jar.name}"
+             basedir="${classes.dir}">
+            <manifest>
+                <attribute name="Main-Class" value="${classes.main}"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="run" depends="build">
+        <java fork="true" classname="${classes.main}">
+            <classpath>
+                <path refid="classpath"/>
+                <path location="${target.dir}/${jar.name}"/>
+            </classpath>
+        </java>
+    </target>
+
+</project>
