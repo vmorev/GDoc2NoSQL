@@ -1,40 +1,39 @@
-package com.vmorev.gdoc2ts.pilot;
+package com.vmorev.gdoc2ts;
 
 import com.google.gdata.util.ServiceException;
-import com.vmorev.gdoc2ts.DocumentLoader;
 import com.vmorev.gdoc2ts.connector.GDocConnector;
 import com.vmorev.gdoc2ts.connector.TSConnector;
-import com.vmorev.gdoc2ts.model.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Map;
+import java.util.Date;
 import java.util.Properties;
 
 /**
  * User: vmorev
  * Date: 11/3/11 6:18 PM
  */
-public class PilotGDoc {
+public class GDoc2TS {
     private static Properties prop = null;
-    private final static Logger logger = LoggerFactory.getLogger(PilotGDoc.class);
+    private final static Logger logger = LoggerFactory.getLogger(GDoc2TS.class);
 
     public static void main(String[] args) throws IOException, ServiceException {
+        logger.info("Setting up Google Doc connection");
         GDocConnector gDocConnector = new GDocConnector(
                 getProperty("gdoc.username"), getProperty("gdoc.password"));
+        logger.info("Setting up TerraStore connection");
         TSConnector tsConnector = new TSConnector(getProperty("ts.url"));
 
-        String rootFolderId = getProperty("gdoc.rootFolder");
-
+        String rootBucket = getProperty("gdoc.rootBucket");
         DocumentLoader docLoader = new DocumentLoader(gDocConnector, tsConnector);
-        docLoader.syncFolder(rootFolderId);
 
-        Map<String, Document> docs = tsConnector.getDocuments(rootFolderId).values().get(Document.class);
-        for (Document doc : docs.values()) {
-            logger.info("Test reading of document " + doc.getTitle());
-        }
+        logger.info("Starting sync");
+        docLoader.syncBucket(rootBucket);
+        logger.info("Cleaning odd buckets");
+        docLoader.cleanBuckets();
+        logger.info("Sync is finished");
     }
 
     private static String getProperty(String key) throws IOException {

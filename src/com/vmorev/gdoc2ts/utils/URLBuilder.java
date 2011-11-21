@@ -25,21 +25,21 @@ public class URLBuilder {
     private static final String URL_SPREADSHEET_DOWNLOAD = "/spreadsheet/fm";
     private static final String URL_SPREADSHEET = URL_FEED + "/spreadsheets" + URL_DEFAULT_SUF;
 
-    public static URL buildDocumentListFeedURL(String resourceId) throws MalformedURLException {
+    public static URL getDocumentListFeedURL(String resourceId) throws MalformedURLException {
         return buildUrl(DOCS_HOST + URL_FOLDER + resourceId + URL_FOLDER_SUF);
     }
 
-    public static URL buildDocumentDownloadURL(String resourceId) throws MalformedURLException {
+    public static URL getDocumentDownloadURL(String resourceId) throws MalformedURLException {
         String[] parameters = {"format=html"};
         return buildUrl(DOCS_HOST + URL_DOCUMENTS_DOWNLOAD + resourceId + URL_DOCUMENTS_DOWNLOAD_SUF, parameters);
     }
 
-    public static URL buildSpreadsheetDownloadURL(String resourceId) throws MalformedURLException {
+    public static URL getSpreadsheetDownloadURL(String resourceId) throws MalformedURLException {
         String[] parameters = {"key=" + resourceId, "fmcmd=5"};
         return buildUrl(DOCS_HOST + URL_SPREADSHEET_DOWNLOAD, parameters);
     }
 
-    public static URL buildSpreadsheetEntryURL(String resourceId) throws MalformedURLException {
+    public static URL getSpreadsheetEntryURL(String resourceId) throws MalformedURLException {
         return buildUrl(SPREADSHEET_HOST + URL_SPREADSHEET + resourceId, null);
     }
 

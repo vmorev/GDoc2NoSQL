@@ -10,9 +10,7 @@ import terrastore.client.BucketOperation;
 import terrastore.client.Values;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * User: vmorev
@@ -22,50 +20,69 @@ public class DocumentLoader {
     private final Logger logger = LoggerFactory.getLogger(DocumentLoader.class);
     private TSConnector tsConnector;
     private GDocConnector gDocConnector;
+    private Set<String> gBuckets;
 
     public DocumentLoader(GDocConnector gDocConnector, TSConnector tsConnector) {
         this.tsConnector = tsConnector;
         this.gDocConnector = gDocConnector;
+        this.gBuckets = new HashSet<String>();
     }
 
-    public void syncFolder(String resourceId) throws IOException, ServiceException {
-        List<AbstractDocument> gDocs;
-        if (resourceId.startsWith(AbstractDocument.DOC_TYPE_FOLDER)) {
-            gDocs = gDocConnector.getDocumentsByFolder(resourceId);
-        } else if (resourceId.startsWith(AbstractDocument.DOC_TYPE_SPREADSHEETS)) {
-            gDocs = gDocConnector.getDocumentsBySpreadsheet(resourceId);
+    public void syncBucket(String bucketName) throws IOException, ServiceException {
+        List<AbstractDocument> gDocuments;
+        if (bucketName.startsWith(AbstractDocument.DOC_TYPE_FOLDER)) {
+            gDocuments = gDocConnector.getDocumentsByBucket(bucketName);
+        } else if (bucketName.startsWith(AbstractDocument.DOC_TYPE_SPREADSHEETS)) {
+            gDocuments = gDocConnector.getDocumentsBySpreadsheet(bucketName);
         } else {
             return;
         }
 
-        BucketOperation tsDocs = tsConnector.getDocuments(resourceId);
-        Map<String, AbstractDocument> toLoad = new HashMap<String, AbstractDocument>(gDocs.size());
+        Map<String, AbstractDocument> tsDocuments = new HashMap<String, AbstractDocument>(gDocuments.size());
+        this.gBuckets.add(bucketName);
 
-        for (AbstractDocument entry : gDocs) {
+        for (AbstractDocument entry : gDocuments) {
             if (logger.isDebugEnabled())
-                logger.debug("GDoc entry found with ID: " + entry.getResourceId() + " and title: " + entry.getTitle());
+                logger.debug("Google Doc entry found ID='" + entry.getResourceId() + "', title='" + entry.getTitle() + "'");
             if (AbstractDocument.DOC_TYPE_FOLDER.equals(entry.getType())) {
-                syncFolder(entry.getResourceId());
+                syncBucket(entry.getResourceId());
             } else if (AbstractDocument.DOC_TYPE_DOCUMENT.equals(entry.getType())) {
-                toLoad.put(entry.getResourceId(), entry);
+                tsDocuments.put(entry.getResourceId(), entry);
             } else if (AbstractDocument.DOC_TYPE_SPREADSHEETS.equals(entry.getType())) {
-                syncFolder(entry.getResourceId());
+                syncBucket(entry.getResourceId());
             } else if (AbstractDocument.DOC_TYPE_SPREADSHEET_ROW.equals(entry.getType())) {
-                toLoad.put(entry.getResourceId(), entry);
+                tsDocuments.put(entry.getResourceId(), entry);
             }
         }
 
         if (logger.isDebugEnabled())
-            logger.debug("Syncing folder " + resourceId);
-        for (String key : toLoad.keySet()) {
+            logger.debug("Bucket to sync " + bucketName);
+        for (String key : tsDocuments.keySet()) {
             if (logger.isDebugEnabled())
-                logger.debug("Syncing key " + key);
+                logger.debug("Key to sync " + key);
         }
-        if (toLoad.size() > 0)
-            tsDocs.bulk().put(new Values<AbstractDocument>(toLoad));
 
-        //todo remove obsolete records in db
-        //todo sync by date (store bucket max update date and apply all newest)
+        if (tsDocuments.size() > 0)
+            persistBucket(bucketName, tsDocuments);
+    }
+
+    private void persistBucket(String bucketName, Map<String, AbstractDocument> tsDocuments) {
+        tsConnector.getDocuments(bucketName).clear();
+        BucketOperation tsDocs = tsConnector.getDocuments(bucketName);
+        if (logger.isDebugEnabled())
+            logger.debug("Syncing buckets");
+        tsDocs.bulk().put(new Values<AbstractDocument>(tsDocuments));
+        //todo: do not remove bucket but rather sync using update date
+    }
+
+    public void cleanBuckets() {
+        Set<String> tsBuckets = tsConnector.getBuckets().list();
+        tsBuckets.removeAll(gBuckets);
+        for (String bucket : tsBuckets) {
+            if (logger.isDebugEnabled())
+                logger.debug("Removing bucket " + bucket);
+            tsConnector.getDocuments(bucket).clear();
+        }
     }
 
 }

@@ -38,14 +38,14 @@ public class GDocConnector {
         conn = new GDocConnection(user, password);
     }
 
-    public List<AbstractDocument> getDocumentsByFolder(String resourceId) throws IOException, ServiceException {
-        URL url = URLBuilder.buildDocumentListFeedURL(resourceId);
+    public List<AbstractDocument> getDocumentsByBucket(String resourceId) throws IOException, ServiceException {
+        URL url = URLBuilder.getDocumentListFeedURL(resourceId);
         DocumentListFeed feed = conn.getService().getFeed(url, DocumentListFeed.class);
 
         List<AbstractDocument> docs = new ArrayList<AbstractDocument>(feed.getEntries().size());
         for (DocumentListEntry entry : feed.getEntries()) {
             if (logger.isDebugEnabled())
-                logger.debug("Adding folder entry " + entry.getResourceId() + " with title " + entry.getTitle().getPlainText());
+                logger.debug("Reading folder ID='" + entry.getResourceId() + "', title='" + entry.getTitle().getPlainText() + "'");
 
             docs.add(convert(entry));
         }
@@ -54,19 +54,19 @@ public class GDocConnector {
 
     public List<AbstractDocument> getDocumentsBySpreadsheet(String resourceId) throws IOException, ServiceException {
         List<AbstractDocument> docs = new ArrayList<AbstractDocument>();
-        URL url = URLBuilder.buildSpreadsheetEntryURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
+        URL url = URLBuilder.getSpreadsheetEntryURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
         SpreadsheetEntry ssEntry = conn.getSsService().getEntry(url, SpreadsheetEntry.class);
         if (logger.isDebugEnabled())
-            logger.debug("Adding spreadsheet entry " + resourceId + " with title " + ssEntry.getTitle().getPlainText());
+            logger.debug("Reading spreadsheet ID='" + resourceId + "', title='" + ssEntry.getTitle().getPlainText() + "'");
 
         for (WorksheetEntry weEntry : ssEntry.getWorksheets()) {
             if (logger.isDebugEnabled())
-                logger.debug("Adding worksheet entry " + weEntry.getId().substring(weEntry.getId().lastIndexOf('/') + 1) + " with title " + weEntry.getTitle().getPlainText());
+                logger.debug("Reading worksheet ID='" + weEntry.getId().substring(weEntry.getId().lastIndexOf('/') + 1) + "', title='" + weEntry.getTitle().getPlainText() + "'");
 
             ListFeed lFeed = conn.getSsService().getFeed(weEntry.getListFeedUrl(), ListFeed.class);
             for (ListEntry leEntry : lFeed.getEntries()) {
                 if (logger.isDebugEnabled())
-                    logger.debug("Adding list entry " + leEntry.getId().substring(leEntry.getId().lastIndexOf('/') + 1) + " with title " + leEntry.getTitle().getPlainText());
+                    logger.debug("Reading row ID='" + leEntry.getId().substring(leEntry.getId().lastIndexOf('/') + 1) + "', title='" + leEntry.getTitle().getPlainText() + "'");
 
                 AbstractDocument doc = new SpreadsheetRow();
                 String entryResourceId = resourceId + ":" +
@@ -78,7 +78,7 @@ public class GDocConnector {
 
                 for (String tag : leEntry.getCustomElements().getTags()) {
                     if (logger.isDebugEnabled())
-                        logger.debug("Tag " + tag + " = " + leEntry.getCustomElements().getValue(tag));
+                        logger.debug("Reading tag '" + tag + "' = '" + leEntry.getCustomElements().getValue(tag) + "'");
 
                     ((SpreadsheetRow) doc).addTag(tag, leEntry.getCustomElements().getValue(tag));
                 }
@@ -111,12 +111,12 @@ public class GDocConnector {
     }
 
     private String downloadSpreadsheets(String resourceId) throws IOException, ServiceException {
-        URL url = URLBuilder.buildSpreadsheetDownloadURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
+        URL url = URLBuilder.getSpreadsheetDownloadURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
         return StringEscapeUtils.unescapeHtml(downloadFile(url));
     }
 
     private String downloadDocument(String resourceId) throws IOException, ServiceException {
-        URL url = URLBuilder.buildDocumentDownloadURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
+        URL url = URLBuilder.getDocumentDownloadURL(resourceId.substring(resourceId.lastIndexOf(":") + 1));
         return StringEscapeUtils.unescapeHtml(downloadFile(url));
     }
 
